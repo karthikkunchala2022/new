@@ -1,6 +1,7 @@
+// src/pages/Dashboard.jsx
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import TaskCard from "../components/TaskCard";
+import TaskTable from "../components/TaskTable";
 import { FiFilter } from "react-icons/fi";
 
 const tasksData = [
@@ -34,6 +35,7 @@ const tasksData = [
 ];
 
 function Dashboard() {
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState(tasksData);
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersVisible, setFiltersVisible] = useState(false);
@@ -46,35 +48,41 @@ function Dashboard() {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
 
-  const handleAssignToMe = (taskId) => {
-    console.log(`Assigning task ${taskId} to current user...`);
+  const handleAction = (type, id) => {
+    switch (type) {
+      case "toggleMenu":
+        setOpenMenuId(openMenuId === id ? null : id);
+        break;
+      case "view":
+        navigate(`/task/${id}/subtasks`);
+        break;
+      case "edit":
+        navigate(`/edit-task/${id}`);
+        break;
+      case "delete":
+        setTaskToDelete(tasks.find(t => t.id === id));
+        setOpenMenuId(null);
+        break;
+      default:
+        break;
+    }
   };
 
   const confirmDelete = () => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskToDelete.id));
-    setTaskToDelete(null);
-    setOpenMenuId(null);
-  };
-
-  const cancelDelete = () => {
+    setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
     setTaskToDelete(null);
   };
 
-  const toggleMenu = (id) => {
-    setOpenMenuId(openMenuId === id ? null : id);
-  };
-
-  const handleFilterChange = (e) => {
+  const handleFilterChange = e => {
     const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters(prev => ({ ...prev, [name]: value }));
   };
 
-  const getUnique = (field) => [...new Set(tasks.map((t) => t[field]))];
+  const getUnique = field => [...new Set(tasks.map(t => t[field]))];
 
-  const filteredTasks = tasks.filter((task) => {
-    const matchesSearch = task.title
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+  const filteredTasks = tasks.filter(task => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesAssignedTo =
       filters.assignedTo === "" || task.assignedTo === filters.assignedTo;
     const matchesCreatedBy =
@@ -92,23 +100,27 @@ function Dashboard() {
     );
   });
 
+  // inject menuOpen flag for each row
+  const tableTasks = filteredTasks.map(t => ({
+    ...t,
+    menuOpen: t.id === openMenuId
+  }));
+
   return (
-    <div className="p-6 pt-20 ">
-      <h1 className="title text-xl sm:text-2xl mb-4 text-center sm:text-left">
+    <div className="p-6 pt-20">
+      <h1 className="text-xl sm:text-2xl mb-4 text-center sm:text-left">
         Task Dashboard
       </h1>
 
-      {/* Search + Filter Toggle */}
       {/* Search + Filter Toggle */}
       <div className="flex flex-nowrap items-center justify-between gap-2 mb-4 overflow-x-auto">
         <input
           type="text"
           placeholder="Search tasks..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           className="flex-grow max-w-[70%] border px-4 py-2 rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-w-[150px]"
         />
-
         <button
           onClick={() => setFiltersVisible(!filtersVisible)}
           className="flex-shrink-0 flex items-center gap-2 text-sm px-4 py-2 rounded bg-orange-500 text-white hover:bg-orange-600 transition whitespace-nowrap"
@@ -120,7 +132,7 @@ function Dashboard() {
 
       {/* Filters */}
       {filtersVisible && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 transition-all duration-300">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <select
             name="assignedTo"
             value={filters.assignedTo}
@@ -128,7 +140,7 @@ function Dashboard() {
             className="border px-2 py-1 text-sm rounded shadow-sm w-full"
           >
             <option value="">Assigned To</option>
-            {getUnique("assignedTo").map((name) => (
+            {getUnique("assignedTo").map(name => (
               <option key={name}>{name}</option>
             ))}
           </select>
@@ -140,7 +152,7 @@ function Dashboard() {
             className="border px-2 py-1 text-sm rounded shadow-sm w-full"
           >
             <option value="">Created By (Faculty)</option>
-            {getUnique("createdBy").map((faculty) => (
+            {getUnique("createdBy").map(faculty => (
               <option key={faculty}>{faculty}</option>
             ))}
           </select>
@@ -171,19 +183,35 @@ function Dashboard() {
         </div>
       )}
 
-      {/* Task Cards */}
-      <div className="space-y-4">
-        {filteredTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onDelete={confirmDelete}
-            onMenuToggle={toggleMenu}
-            openMenuId={openMenuId}
-            setTaskToDelete={setTaskToDelete}
-          />
-        ))}
-      </div>
+      {/* Task Table */}
+      <TaskTable tasks={tableTasks} onAction={handleAction} />
+
+      {/* Delete Confirmation */}
+      {taskToDelete && (
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded shadow-xl p-6 w-full max-w-md mx-4">
+            <h2 className="text-lg font-semibold mb-2">Confirm Delete</h2>
+            <p className="mb-4">
+              Are you sure you want to delete the task{" "}
+              <strong>"{taskToDelete.title}"</strong>?
+            </p>
+            <div className="flex justify-end gap-4">
+              <button
+                className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-100"
+                onClick={() => setTaskToDelete(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded"
+                onClick={confirmDelete}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

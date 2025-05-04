@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import UploadButton from "../components/UploadButton"; // adjust path as needed
+import SubtaskForm from "../components/SubtaskForm";
+import CommentList from "../components/CommentList";
 
 const mockTask = {
   id: 1,
@@ -229,64 +231,42 @@ function SubTask() {
       {/* Add Subtask Section */}
       <div className="mt-10">
         <h2 className="text-lg sm:text-xl font-semibold mb-2">Add New Subtask</h2>
-        <div className="flex flex-row flex-wrap gap-2 items-center">
-          <input
-            type="text"
-            value={newSubtask}
-            onChange={(e) => setNewSubtask(e.target.value)}
-            placeholder="Enter subtask"
-            className="flex-1 p-1.5 border rounded text-sm"
-          />
-          <button
-            onClick={handleAddSubtask}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm"
-          >
-            Add
-          </button>
-        </div>
+        <SubtaskForm
+          onAdd={({ text, files }) => {
+            // 1) call your API (or local state) to add the subtask + attachments:
+            //    addSubtask(taskId, text, files).then(() => reloadSubtasks());
+            // 2) if you’re using local state as a mock, you can do:
+            const newItem = {
+              id: subtasks.length + 1,
+              title: text,
+              completed: false,
+              createdAt: new Date(),
+              attachments: files
+            };
+            setSubtasks(prev => [...prev, newItem]);
+          }}
+        />
       </div>
-
       {/* Task Comments */}
       <div className="mt-10">
         <h2 className="text-lg sm:text-xl font-semibold mb-2">Task Comments</h2>
-        <ul className="mb-3 space-y-3 text-gray-800 text-sm sm:text-base">
-          {taskComments.map((comment, idx) => (
-            <li key={idx}>
-              <div className="mb-1">• {comment}</div>
-              {commentAttachments[idx] && (
-                <img
-                  src={commentAttachments[idx]}
-                  alt={`attachment-${idx}`}
-                  className="max-w-xs rounded border border-gray-300"
-                />
-              )}
-            </li>
-          ))}
-        </ul>
 
-        <div className="flex flex-row flex-wrap gap-2 items-center">
-          <input
-            type="text"
-            value={commentInput}
-            onChange={(e) => setCommentInput(e.target.value)}
-            placeholder="Add a comment"
-            className="flex-1 p-1.5 border rounded text-sm"
-          />
-          <UploadButton onFileSelect={setFileInput} />
-          <button
-            onClick={handleAddComment}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1.5 rounded text-sm font-semibold"
-          >
-            Comment
-          </button>
-        </div>
-
-        {fileInput && (
-          <p className="text-xs text-gray-500 mt-1">
-            Selected file: {fileInput.name}
-          </p>
-        )}
+        <CommentList
+          comments={taskComments.map((text, idx) => ({
+            id: idx,
+            author: "You", // or pull actual author name
+            timestamp: new Date().toLocaleString(), // or use createdAt if you track it
+            text,
+            attachment: commentAttachments[idx] // if you want to render images
+          }))}
+          onAdd={async (newText) => {
+            // 1) POST to your API: await postComment(taskId, newText);
+            // 2) Update local state/mock:
+            setTaskComments((prev) => [...prev, newText]);
+          }}
+        />
       </div>
+      
 
       {/* Subtask Confirmation Dialog */}
       {subtaskToConfirm && (
